@@ -26,31 +26,28 @@ class Sniffer:
         microseconds = int(cur_time % (10 * len(str(seconds))) * 1000000)
         return seconds, microseconds
 
+    def get_pcap_packet(self, recv_socket: socket.socket,
+                        timestamp: float) -> bytes:
+        pack = recv_socket.recv(65535)
+        sec, mic_sec = self.get_pcap_time(timestamp)
+        pack_header = struct.pack('=iiii',
+                                  sec,
+                                  mic_sec,
+                                  len(pack),
+                                  len(pack))
+        return pack_header + pack
+
     def run(self):
         with open(self.pcap_file, 'wb') as file:
             try:
                 recv_socket = self.get_receive_socket()
-                pack = recv_socket.recv(65535)
-                pack_header = struct.pack('=iiii',
-                                          0,
-                                          0,
-                                          len(pack),
-                                          len(pack))
-                self.pcap_header += pack_header
-                self.pcap_header += pack
+                self.pcap_header += self.get_pcap_packet(recv_socket, 0)
                 start = time.time()
                 while True:
-                    pack = recv_socket.recv(65535)
                     end = time.time()
                     timestamp = end - start
-
-                    sec, mic = self.get_pcap_time(timestamp)
-                    self.pcap_header += struct.pack('=iiii',
-                                                    sec,
-                                                    mic,
-                                                    len(pack),
-                                                    len(pack))
-                    self.pcap_header += pack
+                    self.pcap_header += self.get_pcap_packet(recv_socket,
+                                                             timestamp)
 
             except KeyboardInterrupt:
                 file.write(self.pcap_header)
