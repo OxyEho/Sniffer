@@ -1,7 +1,3 @@
-import time
-import socket
-import struct
-
 from sniffer.sniffer import Sniffer
 
 
