@@ -2,7 +2,8 @@ import time
 import socket
 import struct
 
-from sniffer.network_packets import EthernetFrame, IpPack, IcmpPack, TcpPack
+from sniffer.network_packets import EthernetFrame, IpPack, IcmpPack, \
+    TcpPack, UdpPack
 
 
 class PcapWriter:
@@ -29,10 +30,16 @@ class PcapWriter:
 
 class Sniffer:
     def __init__(self, file_name: str = '', packets_count: int = 10,
-                 is_write: bool = True):
+                 is_write: bool = True, is_tcp: bool = True,
+                 is_udp: bool = True, is_icmp: bool = True,
+                 is_other_proto: bool = True):
         self.file_name = file_name
         self.packets_count = packets_count
         self.is_write = is_write
+        self.is_tcp = is_tcp
+        self.is_udp = is_udp
+        self.is_icmp = is_icmp
+        self.is_other_proto = is_other_proto
 
     @staticmethod
     def get_receive_socket() -> socket.socket:
@@ -46,7 +53,7 @@ class Sniffer:
         return seconds, microseconds
 
     def get_pcap_packet(self, recv_socket: socket.socket,
-                        timestamp: float) -> bytes:
+                        timestamp: float) -> (bytes, bytes):
         pack = recv_socket.recv(65535)
         sec, mic_sec = self.get_pcap_time(timestamp)
         pack_header = struct.pack('=iiii',
@@ -54,17 +61,44 @@ class Sniffer:
                                   mic_sec,
                                   len(pack),
                                   len(pack))
-        return pack_header + pack
+        return pack_header, pack
+
+    def packet_filter(self, bytes_packet: bytes) -> bool:
+        ethernet_frame = EthernetFrame.get_ethernet_frame(bytes_packet)
+        if ethernet_frame.protocol == 8:
+            ip_packet = IpPack.get_unpack_ip_pack(ethernet_frame.data)
+            if ip_packet.protocol == 1 and self.is_icmp:
+                packet = IcmpPack.get_icmp_packet(ip_packet.data)
+                print(ethernet_frame, ip_packet, packet)
+                return True
+            elif ip_packet.protocol == 6 and self.is_tcp:
+                packet = TcpPack.get_tcp_pack(ip_packet.data)
+                print(ethernet_frame, ip_packet, packet)
+                return True
+            elif ip_packet.protocol == 17 and self.is_udp:
+                packet = UdpPack.get_udp_packet(ip_packet.data)
+                print(ethernet_frame, ip_packet, packet)
+                return True
+            if self.is_other_proto:
+                print(ethernet_frame, ip_packet)
+                return True
+            return False
+        return False
 
     def run(self):
         pcap_writer = PcapWriter(self.file_name)
         recv_socket = self.get_receive_socket()
-        packets = self.get_pcap_packet(recv_socket, 0)
+        pack_header, bytes_packet = self.get_pcap_packet(recv_socket, 0)
+        packets = pack_header + bytes_packet
         start = time.time()
-        for _ in range(self.packets_count):
+        current_packets_count = 1
+        while current_packets_count <= self.packets_count:
             end = time.time()
             timestamp = end - start
-            packets += self.get_pcap_packet(recv_socket,
-                                            timestamp)
+            pack_header, bytes_packet = self.get_pcap_packet(recv_socket,
+                                                             timestamp)
+            if self.packet_filter(bytes_packet):
+                packets += pack_header + bytes_packet
+                current_packets_count += 1
         if self.is_write:
             pcap_writer.write_pcap(packets)
