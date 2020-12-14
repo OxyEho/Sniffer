@@ -1,13 +1,25 @@
 import socket
 import struct
 
+
 TAB_ONE = '\t'
 TAB_TWO = '\t\t'
 TAB_THREE = '\t\t\t'
 TAB_FOUR = '\t\t\t\t'
 
 
-class EthernetFrame:
+class Packet:
+    child = None
+
+    def show_packet(self):
+        parent = self
+        while parent.child is not None:
+            print(parent)
+            parent = parent.child
+        print(parent)
+
+
+class EthernetFrame(Packet):
     def __init__(self, destination_mac: str, source_mac: str,
                  protocol: int, data: bytes):
         self.destination_mac = destination_mac
@@ -15,11 +27,11 @@ class EthernetFrame:
         self.protocol = protocol
         self.data = data
 
-    @staticmethod
-    def get_ethernet_frame(data: bytes):
+    @classmethod
+    def get_ethernet_frame(cls, data: bytes):
         destination_mac, source_mac, protocol = struct.unpack('!6s6sH',
                                                               data[:14])
-        return EthernetFrame(EthernetFrame.get_mac_address(destination_mac),
+        return cls(EthernetFrame.get_mac_address(destination_mac),
                              EthernetFrame.get_mac_address(source_mac),
                              socket.htons(protocol), data[14:])
 
@@ -36,16 +48,16 @@ class EthernetFrame:
                f'{TAB_ONE}Protocol: {self.protocol}\n'
 
 
-class IcmpPack:
+class IcmpPack(Packet):
     def __init__(self, icmp_type, icmp_code, data):
         self.icmp_type = icmp_type
         self.icmp_code = icmp_code
         self.data = data
 
-    @staticmethod
-    def get_icmp_packet(data: bytes):
+    @classmethod
+    def get_icmp_packet(cls, data: bytes):
         icmp_type, icmp_code = struct.unpack('!BB', data[:2])
-        return IcmpPack(icmp_type, icmp_code, data[2:])
+        return cls(icmp_type, icmp_code, data[2:])
 
     def __str__(self):
         return f'{TAB_TWO}ICMP packet:\n' \
@@ -53,7 +65,7 @@ class IcmpPack:
                f'{TAB_THREE}TYPE: {self.icmp_type}\n'
 
 
-class IpPack:
+class IpPack(Packet):
     def __init__(self, version: int, header_len: int, ttl: int, protocol: int,
                  source_ip: str, destination_ip: str, data: bytes):
         self.version = version
@@ -64,13 +76,13 @@ class IpPack:
         self.destination_ip = destination_ip
         self.data = data
 
-    @staticmethod
-    def get_unpack_ip_pack(data: bytes):
+    @classmethod
+    def get_unpack_ip_pack(cls, data: bytes):
         version = data[0] >> 4
         header_len = (data[0] & 15) * 4
         ttl, protocol, source_ip, destination_ip = struct.unpack('!8xBB2x4s4s',
                                                                  data[:20])
-        return IpPack(version=version, header_len=header_len, ttl=ttl,
+        return cls(version=version, header_len=header_len, ttl=ttl,
                       protocol=protocol,
                       source_ip=IpPack.ip(source_ip),
                       destination_ip=IpPack.ip(destination_ip),
@@ -90,7 +102,7 @@ class IpPack:
                f'{TAB_TWO}Protocol: {self.protocol}\n'
 
 
-class TcpPack:
+class TcpPack(Packet):
     def __init__(self, source_port: int, destination_port: int,
                  seq: int, acknowledgement: int, flags, data: bytes):
         self.source_port: int = source_port
@@ -105,10 +117,9 @@ class TcpPack:
         self.fin = (flags & 1)
         self.data = data
 
-    @staticmethod
-    def get_tcp_pack(data: bytes):
-        # source_port, destination_port, seq, acknowledgement, flags = struct.unpack('!HHLLxB', data[:14])
-        return TcpPack(*struct.unpack('!HHLLxB', data[:14]), data[20:])
+    @classmethod
+    def get_tcp_pack(cls, data: bytes):
+        return cls(*struct.unpack('!HHLLxB', data[:14]), data[20:])
 
     def __str__(self):
         return f'{TAB_TWO}TCP packet:\n' \
@@ -121,7 +132,7 @@ class TcpPack:
                f'{TAB_THREE}       SYN: {self.syn} FIN: {self.fin}\n'
 
 
-class UdpPack:
+class UdpPack(Packet):
     def __init__(self, source_port: int, destination_port: int,
                  packet_len: int, data: bytes):
         self.source_port = source_port
@@ -129,10 +140,10 @@ class UdpPack:
         self.packet_len = packet_len
         self.data = data
 
-    @staticmethod
-    def get_udp_packet(data: bytes):
+    @classmethod
+    def get_udp_packet(cls, data: bytes):
         source_port, destination_port, size = struct.unpack('!HH2xH', data[:8])
-        return UdpPack(source_port, destination_port, size, data[8:])
+        return cls(source_port, destination_port, size, data[8:])
 
     def __str__(self):
         return f'{TAB_TWO}UDP packet:\n' \

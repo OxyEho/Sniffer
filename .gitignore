@@ -2,4 +2,4 @@ venv
 log
 .idea
 sniffer/__pycache__
-CUI.py
+.pytest_cache
