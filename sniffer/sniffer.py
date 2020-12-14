@@ -33,11 +33,7 @@ class PcapWriter:
                            self.time_zone, 0, self.max_packet_len,
                            self.network)
 
-    def write_pcap(self, packets: bytes) -> None:
-        with open(self.file_name, 'wb') as pcap_file:
-            pcap_file.write(self.get_pcap_header() + packets)
-
-    def add_packet(self, packet: bytes, current_time: float) -> None:
+    def add_packet(self, packet: bytes, current_time: float):
         with open(self.file_name, 'ab') as pcap_file:
             if self._current_time is None:
                 self._current_time = current_time
@@ -93,13 +89,7 @@ class Sniffer:
         self.receive_socket = socket.socket(socket.AF_PACKET, socket.SOCK_RAW,
                                             socket.ntohs(3))
 
-    @staticmethod
-    def get_receive_socket() -> socket.socket:
-        return socket.socket(socket.AF_PACKET, socket.SOCK_RAW,
-                             socket.ntohs(3))
-
-    def _catch_packet(self) -> \
-            Tuple[bytes, float]:
+    def _catch_packet(self) -> Tuple[bytes, float]:
         return self.receive_socket.recv(65535), time.perf_counter()
 
     def run(self):
