@@ -77,7 +77,7 @@ class IpPack(Packet):
         self.data = data
 
     @classmethod
-    def get_unpack_ip_pack(cls, data: bytes):
+    def get_ip_pack(cls, data: bytes):
         version = data[0] >> 4
         header_len = (data[0] & 15) * 4
         ttl, protocol, source_ip, destination_ip = struct.unpack('!8xBB2x4s4s',

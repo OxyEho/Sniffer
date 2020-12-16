@@ -50,7 +50,7 @@ class PcapWriter:
         is_correct_packet = False
         ethernet_frame = EthernetFrame.get_ethernet_frame(packet)
         if ethernet_frame.protocol == 8:
-            ip_packet = IpPack.get_unpack_ip_pack(ethernet_frame.data)
+            ip_packet = IpPack.get_ip_pack(ethernet_frame.data)
             ethernet_frame.child = ip_packet
             if ip_packet.protocol == 1 and self.is_icmp:
                 packet = IcmpPack.get_icmp_packet(ip_packet.data)
