@@ -1,6 +1,8 @@
 import socket
 import struct
+import abc
 
+from dataclasses import dataclass
 
 TAB_ONE = '\t'
 TAB_TWO = '\t\t'
@@ -8,8 +10,18 @@ TAB_THREE = '\t\t\t'
 TAB_FOUR = '\t\t\t\t'
 
 
+@dataclass
 class Packet:
+    data = None
+    protocol = None
     child = None
+    parent = None
+    internal_protocols = {}
+
+    @classmethod
+    @abc.abstractmethod
+    def parse(cls, data: bytes):
+        return cls()
 
     def show_packet(self):
         parent = self
@@ -18,34 +30,23 @@ class Packet:
             parent = parent.child
         print(parent)
 
-
-class EthernetFrame(Packet):
-    def __init__(self, destination_mac: str, source_mac: str,
-                 protocol: int, data: bytes):
-        self.destination_mac = destination_mac
-        self.source_mac = source_mac
-        self.protocol = protocol
-        self.data = data
-
     @classmethod
-    def get_ethernet_frame(cls, data: bytes):
-        destination_mac, source_mac, protocol = struct.unpack('!6s6sH',
-                                                              data[:14])
-        return cls(EthernetFrame.get_mac_address(destination_mac),
-                             EthernetFrame.get_mac_address(source_mac),
-                             socket.htons(protocol), data[14:])
-
-    @staticmethod
-    def get_mac_address(bytes_mac: bytes) -> str:
-        bytes_mac = map('{:02x}'.format, bytes_mac)
-        mac_address = ':'.join(bytes_mac).upper()
-        return mac_address
-
-    def __str__(self):
-        return f'Ethernet frame:\n' \
-               f'{TAB_ONE}Source MAC: {self.source_mac}\n' \
-               f'{TAB_ONE}Destination MAC: {self.destination_mac}\n' \
-               f'{TAB_ONE}Protocol: {self.protocol}\n'
+    def unpack(cls, data: bytes):
+        packet = cls.parse(data)
+        protocol = packet.protocol
+        while protocol is not None and protocol in packet.internal_protocols:
+            try:
+                _cls = packet.internal_protocols[protocol]
+                internal_packet = _cls.parse(packet.data)
+                protocol = internal_packet.protocol
+                packet.child = internal_packet
+                internal_packet.parent = packet
+                packet = internal_packet
+            except KeyError:
+                continue
+        while packet.parent is not None:
+            packet = packet.parent
+        return packet
 
 
 class IcmpPack(Packet):
@@ -55,7 +56,7 @@ class IcmpPack(Packet):
         self.data = data
 
     @classmethod
-    def get_icmp_packet(cls, data: bytes):
+    def parse(cls, data: bytes):
         icmp_type, icmp_code = struct.unpack('!BB', data[:2])
         return cls(icmp_type, icmp_code, data[2:])
 
@@ -63,43 +64,6 @@ class IcmpPack(Packet):
         return f'{TAB_TWO}ICMP packet:\n' \
                f'{TAB_THREE}CODE: {self.icmp_code}\n' \
                f'{TAB_THREE}TYPE: {self.icmp_type}\n'
-
-
-class IpPack(Packet):
-    def __init__(self, version: int, header_len: int, ttl: int, protocol: int,
-                 source_ip: str, destination_ip: str, data: bytes):
-        self.version = version
-        self.header_len = header_len
-        self.ttl = ttl
-        self.protocol = protocol
-        self.source_ip = source_ip
-        self.destination_ip = destination_ip
-        self.data = data
-
-    @classmethod
-    def get_ip_pack(cls, data: bytes):
-        version = data[0] >> 4
-        header_len = (data[0] & 15) * 4
-        ttl, protocol, source_ip, destination_ip = struct.unpack('!8xBB2x4s4s',
-                                                                 data[:20])
-        return cls(version=version, header_len=header_len, ttl=ttl,
-                      protocol=protocol,
-                      source_ip=IpPack.ip(source_ip),
-                      destination_ip=IpPack.ip(destination_ip),
-                      data=data[20:])
-
-    @staticmethod
-    def ip(address: bytes) -> str:
-        return '.'.join(map(str, address))
-
-    def __str__(self):
-        return f'{TAB_ONE}IP packet:\n' \
-               f'{TAB_TWO}Version: {self.version}\n' \
-               f'{TAB_TWO}Header length: {self.header_len}\n' \
-               f'{TAB_TWO}Time to live: {self.ttl}\n' \
-               f'{TAB_TWO}Source Ip: {self.source_ip}\n' \
-               f'{TAB_TWO}Destination Ip: {self.destination_ip}\n' \
-               f'{TAB_TWO}Protocol: {self.protocol}\n'
 
 
 class TcpPack(Packet):
@@ -118,7 +82,7 @@ class TcpPack(Packet):
         self.data = data
 
     @classmethod
-    def get_tcp_pack(cls, data: bytes):
+    def parse(cls, data: bytes):
         return cls(*struct.unpack('!HHLLxB', data[:14]), data[20:])
 
     def __str__(self):
@@ -141,7 +105,7 @@ class UdpPack(Packet):
         self.data = data
 
     @classmethod
-    def get_udp_packet(cls, data: bytes):
+    def parse(cls, data: bytes):
         source_port, destination_port, size = struct.unpack('!HH2xH', data[:8])
         return cls(source_port, destination_port, size, data[8:])
 
@@ -150,3 +114,73 @@ class UdpPack(Packet):
                f'{TAB_THREE}Source port: {self.source_port}\n' \
                f'{TAB_THREE}Destination port: {self.destination_port}\n' \
                f'{TAB_THREE}Size: {self.packet_len}\n'
+
+
+class IpPack(Packet):
+    internal_protocols = {1: IcmpPack, 6: TcpPack, 17: UdpPack}
+    
+    def __init__(self, version: int, header_len: int, ttl: int, protocol: int,
+                 source_ip: str, destination_ip: str, data: bytes):
+        self.version = version
+        self.header_len = header_len
+        self.ttl = ttl
+        self.protocol = protocol
+        self.source_ip = source_ip
+        self.destination_ip = destination_ip
+        self.data = data
+
+    @classmethod
+    def parse(cls, data: bytes):
+        version = data[0] >> 4
+        header_len = (data[0] & 15) * 4
+        ttl, protocol, source_ip, destination_ip = struct.unpack('!8xBB2x4s4s',
+                                                                 data[:20])
+        return cls(version=version, header_len=header_len, ttl=ttl,
+                   protocol=protocol,
+                   source_ip=cls.ip(source_ip),
+                   destination_ip=cls.ip(destination_ip),
+                   data=data[20:])
+
+    @staticmethod
+    def ip(address: bytes) -> str:
+        return '.'.join(map(str, address))
+
+    def __str__(self):
+        return f'{TAB_ONE}IP packet:\n' \
+               f'{TAB_TWO}Version: {self.version}\n' \
+               f'{TAB_TWO}Header length: {self.header_len}\n' \
+               f'{TAB_TWO}Time to live: {self.ttl}\n' \
+               f'{TAB_TWO}Source Ip: {self.source_ip}\n' \
+               f'{TAB_TWO}Destination Ip: {self.destination_ip}\n' \
+               f'{TAB_TWO}Protocol: {self.protocol}\n'
+
+
+class EthernetFrame(Packet):
+    internal_protocols = {8: IpPack}
+
+    def __init__(self, destination_mac: str, source_mac: str,
+                 protocol: int, data: bytes):
+        self.destination_mac = destination_mac
+        self.source_mac = source_mac
+        self.protocol = protocol
+        self.data = data
+
+    @classmethod
+    def parse(cls, data: bytes):
+        destination_mac, source_mac, protocol = struct.unpack('!6s6sH',
+                                                              data[:14])
+        return cls(cls.get_mac_address(destination_mac),
+                   cls.get_mac_address(source_mac),
+                   socket.htons(protocol), data[14:])
+
+    @staticmethod
+    def get_mac_address(bytes_mac: bytes) -> str:
+        bytes_mac = map('{:02x}'.format, bytes_mac)
+        mac_address = ':'.join(bytes_mac).upper()
+        return mac_address
+
+    def __str__(self):
+        return f'Ethernet frame:\n' \
+               f'{TAB_ONE}Source MAC: {self.source_mac}\n' \
+               f'{TAB_ONE}Destination MAC: {self.destination_mac}\n' \
+               f'{TAB_ONE}Protocol: {self.protocol}\n'

@@ -24,7 +24,7 @@ class PcapWriter:
         self.is_udp = is_udp
         self.is_icmp = is_icmp
         self.is_other_proto = is_other_proto
-        with open(self.file_name, 'ab') as pcap_file:
+        with open(self.file_name, 'wb') as pcap_file:
             pcap_file.write(self.get_pcap_header())
 
     def get_pcap_header(self) -> bytes:
@@ -47,30 +47,33 @@ class PcapWriter:
                 pcap_file.write(packet_header + packet)
 
     def analyze_packet(self, packet: bytes) -> bool:
-        is_correct_packet = False
-        ethernet_frame = EthernetFrame.get_ethernet_frame(packet)
-        if ethernet_frame.protocol == 8:
-            ip_packet = IpPack.get_ip_pack(ethernet_frame.data)
-            ethernet_frame.child = ip_packet
-            if ip_packet.protocol == 1 and self.is_icmp:
-                packet = IcmpPack.get_icmp_packet(ip_packet.data)
-                ip_packet.child = packet
-                is_correct_packet = True
-            elif ip_packet.protocol == 6 and self.is_tcp:
-                packet = TcpPack.get_tcp_pack(ip_packet.data)
-                ip_packet.child = packet
-                is_correct_packet = True
-            elif ip_packet.protocol == 17 and self.is_udp:
-                packet = UdpPack.get_udp_packet(ip_packet.data)
-                ip_packet.child = packet
-                is_correct_packet = True
-            elif self.is_other_proto:
-                is_correct_packet = True
-        if self.is_other_proto:
-            is_correct_packet = True
-        if is_correct_packet:
-            ethernet_frame.show_packet()
-        return is_correct_packet
+        eth = EthernetFrame.unpack(packet)
+        eth.show_packet()
+        return True
+        # is_correct_packet = False
+        # ethernet_frame = EthernetFrame.parse(packet)
+        # if ethernet_frame.protocol == 8:
+        #     ip_packet = IpPack.parse(ethernet_frame.data)
+        #     ethernet_frame.child = ip_packet
+        #     if ip_packet.protocol == 1 and self.is_icmp:
+        #         packet = IcmpPack.parse(ip_packet.data)
+        #         ip_packet.child = packet
+        #         is_correct_packet = True
+        #     elif ip_packet.protocol == 6 and self.is_tcp:
+        #         packet = TcpPack.parse(ip_packet.data)
+        #         ip_packet.child = packet
+        #         is_correct_packet = True
+        #     elif ip_packet.protocol == 17 and self.is_udp:
+        #         packet = UdpPack.parse(ip_packet.data)
+        #         ip_packet.child = packet
+        #         is_correct_packet = True
+        #     elif self.is_other_proto:
+        #         is_correct_packet = True
+        # if self.is_other_proto:
+        #     is_correct_packet = True
+        # if is_correct_packet:
+        #     ethernet_frame.show_packet()
+        # return is_correct_packet
 
 
 class Sniffer:
