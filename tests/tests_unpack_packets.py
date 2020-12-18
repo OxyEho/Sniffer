@@ -2,7 +2,7 @@ import socket
 import struct
 
 from sniffer.network_packets import EthernetFrame, IpPack, \
-    IcmpPack, TcpPack, UdpPack
+    IcmpPack, TcpPack, UdpPack, IP, MAC
 
 
 def test_get_ethernet_frame():
@@ -11,9 +11,9 @@ def test_get_ethernet_frame():
     protocol = 2048
     data = struct.pack('!6s6sH', destination_mac, source_mac, protocol)
     ethernet_frame = EthernetFrame.parse(data)
-    assert ethernet_frame.destination_mac == \
+    assert str(ethernet_frame.destination_mac) == \
            EthernetFrame.get_mac_address(destination_mac)
-    assert ethernet_frame.source_mac == \
+    assert str(ethernet_frame.source_mac) == \
            EthernetFrame.get_mac_address(source_mac)
     assert ethernet_frame.protocol == socket.htons(protocol)
 
@@ -22,11 +22,11 @@ def test_get_ip_packet():
     pack_version = 69
     ttl = 255
     protocol = 6
-    source_ip = '192.168.1.152'
-    destination_ip = '192.168.1.1'
+    source_ip = IP('192.168.1.152')
+    destination_ip = IP('192.168.1.1')
     data = struct.pack('!B7xBB2x4s4s', pack_version, ttl, protocol,
-                       socket.inet_aton(source_ip),
-                       socket.inet_aton(destination_ip))
+                       socket.inet_aton(str(source_ip)),
+                       socket.inet_aton(str(destination_ip)))
     ip_pack = IpPack.parse(data)
     assert ip_pack.version == 4
     assert ip_pack.header_len == 20
@@ -75,4 +75,3 @@ def test_get_udp_packet():
     assert udp_packet.source_port == source_port
     assert udp_packet.destination_port == destination_port
     assert udp_packet.packet_len == size
-

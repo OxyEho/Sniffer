@@ -5,7 +5,7 @@ import os
 
 from unittest.mock import patch
 
-from sniffer.sniffer import Sniffer
+from sniffer.sniffer import Sniffer, EthProtocols, IPProtocols
 
 
 @pytest.fixture(autouse=True)
@@ -15,9 +15,11 @@ def del_tmp_directory():
 
 
 @pytest.fixture()
-@patch.object(socket, 'socket',return_value=None)
+@patch.object(socket, 'socket', return_value=None)
 def sniffer(mock_socket):
-    return Sniffer('test.pcap')
+    return Sniffer('test.pcap', 10, {EthProtocols.IP, EthProtocols.OTHER},
+                   {IPProtocols.TCP, IPProtocols.ICMP,
+                    IPProtocols.UDP, IPProtocols.OTHER})
 
 
 def test_get_pcap_header(sniffer):

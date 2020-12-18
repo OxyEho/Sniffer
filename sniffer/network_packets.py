@@ -10,6 +10,43 @@ TAB_THREE = '\t\t\t'
 TAB_FOUR = '\t\t\t\t'
 
 
+class IP:
+    def __init__(self, ip: str):
+        self.parts = ip.split('.')
+        self.int_parts = [int(x) for x in self.parts]
+
+    def __str__(self):
+        return '.'.join(self.parts)
+
+    def __eq__(self, other):
+        return self.parts == other.parts
+
+
+class MAC:
+    def __init__(self, mac: str):
+        self.parts = mac.split(':')
+
+    def __str__(self):
+        return ':'.join(self.parts)
+
+    def __eq__(self, other):
+        return self.parts == other.parts
+
+
+class IPNetwork:
+    def __init__(self, network_adr: str):
+        network, mask = network_adr.split('/')
+        self.network = IP(network)
+        mask = '1' * int(mask) + '0' * (32 - int(mask))
+        self.mask = [int(mask[i:i+8], 2) for i in range(0, 32, 8)]
+
+    def __contains__(self, item: IP):
+        result_network_adr = []
+        for ip_part, mask_part in zip(item.int_parts, self.mask):
+            result_network_adr.append(str(mask_part & ip_part))
+        result_network = IP('.'.join(result_network_adr))
+        return result_network == self.network
+
 @dataclass
 class Packet:
     data = None
@@ -35,15 +72,12 @@ class Packet:
         packet = cls.parse(data)
         protocol = packet.protocol
         while protocol is not None and protocol in packet.internal_protocols:
-            try:
-                _cls = packet.internal_protocols[protocol]
-                internal_packet = _cls.parse(packet.data)
-                protocol = internal_packet.protocol
-                packet.child = internal_packet
-                internal_packet.parent = packet
-                packet = internal_packet
-            except KeyError:
-                continue
+            _cls = packet.internal_protocols[protocol]
+            internal_packet = _cls.parse(packet.data)
+            protocol = internal_packet.protocol
+            packet.child = internal_packet
+            internal_packet.parent = packet
+            packet = internal_packet
         while packet.parent is not None:
             packet = packet.parent
         return packet
@@ -120,7 +154,7 @@ class IpPack(Packet):
     internal_protocols = {1: IcmpPack, 6: TcpPack, 17: UdpPack}
     
     def __init__(self, version: int, header_len: int, ttl: int, protocol: int,
-                 source_ip: str, destination_ip: str, data: bytes):
+                 source_ip: IP, destination_ip: IP, data: bytes):
         self.version = version
         self.header_len = header_len
         self.ttl = ttl
@@ -137,8 +171,8 @@ class IpPack(Packet):
                                                                  data[:20])
         return cls(version=version, header_len=header_len, ttl=ttl,
                    protocol=protocol,
-                   source_ip=cls.ip(source_ip),
-                   destination_ip=cls.ip(destination_ip),
+                   source_ip=IP(cls.ip(source_ip)),
+                   destination_ip=IP(cls.ip(destination_ip)),
                    data=data[20:])
 
     @staticmethod
@@ -158,7 +192,7 @@ class IpPack(Packet):
 class EthernetFrame(Packet):
     internal_protocols = {8: IpPack}
 
-    def __init__(self, destination_mac: str, source_mac: str,
+    def __init__(self, destination_mac: MAC, source_mac: MAC,
                  protocol: int, data: bytes):
         self.destination_mac = destination_mac
         self.source_mac = source_mac
@@ -169,8 +203,8 @@ class EthernetFrame(Packet):
     def parse(cls, data: bytes):
         destination_mac, source_mac, protocol = struct.unpack('!6s6sH',
                                                               data[:14])
-        return cls(cls.get_mac_address(destination_mac),
-                   cls.get_mac_address(source_mac),
+        return cls(MAC(cls.get_mac_address(destination_mac)),
+                   MAC(cls.get_mac_address(source_mac)),
                    socket.htons(protocol), data[14:])
 
     @staticmethod
