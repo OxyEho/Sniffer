@@ -94,7 +94,7 @@ class PcapWriter:
     max_packet_len: int = 65535
     network: int = 1
 
-    def __init__(self, file_name: str,
+    def __init__(self, work_always: bool, file_name: str,
                  available_eth_protocols: Set[EthProtocols],
                  available_ip_protocols: Set[IPProtocols],
                  ips: List[IP],
@@ -107,8 +107,9 @@ class PcapWriter:
                                         available_ip_protocols)
         self.address_filter = AddressFilter(ips, macs, ip_network)
         self.packets_queue = Queue()
-        self.current_packets_count = 0
+        self.cur_packets_count = 0
         self.max_packets_count = max_packets_count
+        self.work_always = work_always
         with open(self.file_name, 'wb') as pcap_file:
             pcap_file.write(self.get_pcap_header())
 
@@ -119,7 +120,8 @@ class PcapWriter:
                            self.network)
 
     def add_packet(self):
-        while self.current_packets_count < self.max_packets_count:
+        while self.cur_packets_count < self.max_packets_count or \
+                self.work_always:
             try:
                 packet, current_time = self.packets_queue.get()
             except Empty:
@@ -128,7 +130,7 @@ class PcapWriter:
                 if self._current_time is None:
                     self._current_time = current_time
                 if self.analyze_packet(packet):
-                    self.current_packets_count += 1
+                    self.cur_packets_count += 1
                     packet_header = struct.pack('=iiii',
                                                 int(current_time -
                                                     self._current_time),
@@ -149,7 +151,8 @@ class PcapWriter:
 
 
 class Sniffer:
-    def __init__(self, file_name: str, max_packets_count: int,
+    def __init__(self, work_always: bool, file_name: str,
+                 max_packets_count: int,
                  available_eth_protocols: Set[EthProtocols],
                  available_ip_protocols: Set[IPProtocols],
                  ips: List[IP],
@@ -157,7 +160,8 @@ class Sniffer:
                  ip_network: IPNetwork):
         self.max_packets_count = max_packets_count
         self._time_delta = None
-        self.pcap_writer = PcapWriter(file_name, available_eth_protocols,
+        self.pcap_writer = PcapWriter(work_always, file_name,
+                                      available_eth_protocols,
                                       available_ip_protocols, ips, macs,
                                       ip_network, max_packets_count)
         self.recv_socket = socket.socket(socket.AF_PACKET, socket.SOCK_RAW,
@@ -172,27 +176,26 @@ class Sniffer:
                              socket.ntohs(3))
 
     def _catch_packet(self):
-        while self.pcap_writer.current_packets_count < self.max_packets_count:
+        while self.pcap_writer.cur_packets_count < self.max_packets_count \
+                or self.pcap_writer.work_always:
             recv_socket = self._get_recv_socket()
             self._sockets.append(recv_socket)
             caught_packet = recv_socket.recv(65535), time.perf_counter()
             self.pcap_writer.packets_queue.put(caught_packet)
 
     def run(self):
+        threads = []
         try:
             catching_thread = Thread(target=self._catch_packet)
             catching_thread.start()
             add_thread = Thread(target=self.pcap_writer.add_packet)
             add_thread.start()
-            # current_packets_count = 0
-            # while current_packets_count < self.max_packets_count:
-            #     catching_thread = Thread(target=self._catch_packet)
-            #     catching_thread.start()
-            #     add_thread = Thread(target=self.pcap_writer.add_packet)
-            #     self.pcap_writer.add_packet(*self._catch_packet())
-            #     current_packets_count += 1
+            threads.append(catching_thread)
+            threads.append(add_thread)
         except KeyboardInterrupt:
-            pass
+            for thread in threads:
+                thread.join()
+
         finally:
             self.close()
 

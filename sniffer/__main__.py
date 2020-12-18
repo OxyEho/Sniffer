@@ -6,7 +6,8 @@ from sniffer.sniffer import Sniffer, IPProtocols, EthProtocols, \
 
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument('-n', type=int)
+    arg_parser.add_argument('-n', type=int, default=0)
+    arg_parser.add_argument('-a', action='store_true')
     arg_parser.add_argument('-f', type=str, default='log')
     arg_parser.add_argument('--ips', nargs='*', default=[])
     arg_parser.add_argument('--macs', nargs='*', default=[])
@@ -40,6 +41,6 @@ if __name__ == '__main__':
     if available_ip_protocols == set():
         available_ip_protocols = {IPProtocols.TCP, IPProtocols.ICMP,
                                   IPProtocols.UDP, IPProtocols.OTHER}
-    sniffer = Sniffer(args.f, args.n, available_eth_protocols,
+    sniffer = Sniffer(args.a, args.f, args.n, available_eth_protocols,
                       available_ip_protocols, ips, macs, ip_net)
     sniffer.run()
