@@ -10,16 +10,6 @@ TAB_THREE = '\t\t\t'
 TAB_FOUR = '\t\t\t\t'
 
 
-def get_checksum(msg: bytes) -> int:
-    checksum = 0
-    for i in range(0, len(msg), 2):
-        part = (msg[i] << 8) + (msg[i + 1])
-        checksum += part
-    checksum = (checksum >> 16) + (checksum & 0xffff)
-
-    return checksum ^ 0xffff
-
-
 class IP:
     def __init__(self, ip: str):
         self.parts = ip.split('.')
@@ -196,7 +186,7 @@ class IpPack(Packet):
 
     def __init__(self, version: int, header_len: int, ttl: int, protocol: int,
                  source_ip: IP, destination_ip: IP,
-                 origin_pack: bytes, data: bytes):
+                 origin_pack: bytes, checksum: int, data: bytes):
         self.version = version
         self.header_len = header_len
         self.ttl = ttl
@@ -204,13 +194,14 @@ class IpPack(Packet):
         self.source_ip = source_ip
         self.destination_ip = destination_ip
         self.origin_pack = origin_pack
+        self.checksum = checksum
         self.data = data
 
     @classmethod
     def parse(cls, data: bytes):
         version = data[0] >> 4
         header_len = (data[0] & 15) * 4
-        ttl, protocol, check_sum, source_ip, destination_ip = struct.unpack(
+        ttl, protocol, checksum, source_ip, destination_ip = struct.unpack(
             '!8xBBH4s4s',
             data[:20])
         return cls(version=version, header_len=header_len, ttl=ttl,
@@ -218,7 +209,8 @@ class IpPack(Packet):
                    source_ip=IP(cls.ip(source_ip)),
                    destination_ip=IP(cls.ip(destination_ip)),
                    origin_pack=data,
-                   data=data[20:])
+                   data=data[20:],
+                   checksum=checksum)
 
     @staticmethod
     def ip(address: bytes) -> str:
@@ -231,7 +223,8 @@ class IpPack(Packet):
                f'{TAB_TWO}Time to live: {self.ttl}\n' \
                f'{TAB_TWO}Source Ip: {self.source_ip}\n' \
                f'{TAB_TWO}Destination Ip: {self.destination_ip}\n' \
-               f'{TAB_TWO}Protocol: {self.protocol}\n'
+               f'{TAB_TWO}Protocol: {self.protocol}\n{TAB_TWO}' \
+               f'Checksum: {self.checksum}\n'
 
 
 class EthernetFrame(Packet):

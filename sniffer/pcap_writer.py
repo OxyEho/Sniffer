@@ -27,12 +27,12 @@ class PcapWriter:
                  available_ip_protocols: Set[IPProtocols],
                  ips: List[IP],
                  macs: List[MAC],
-                 ip_network: IPNetwork,
+                 ip_network: Optional[IPNetwork],
                  max_packets_count: int,
                  timer: Optional[int]):
         self.file_name = file_name
         self.cur_file_name = file_name
-        self._current_time: Optional[float] = None
+        self.current_time: Optional[float] = None
         self.proto_filter = ProtoFilter(available_eth_protocols,
                                         available_ip_protocols)
         self.address_filter = AddressFilter(ips, macs, ip_network)
@@ -66,16 +66,16 @@ class PcapWriter:
                                      f'{next(self._gen_file_num)}'
                 with open(self.cur_file_name, 'wb') as pcap_file:
                     pcap_file.write(self.get_pcap_header())
-                self._current_time = None
+                self.current_time = None
 
     def control_files_by_time(self, current_time: float):
-        if self.timer and self._current_time:
-            if current_time - self._current_time >= self.timer:
+        if self.timer and self.current_time:
+            if current_time - self.current_time >= self.timer:
                 self.cur_file_name = f'{self.file_name}' \
                                      f'{next(self._gen_file_num)}'
                 with open(self.cur_file_name, 'wb') as pcap_file:
                     pcap_file.write(self.get_pcap_header())
-                self._current_time = None
+                self.current_time = None
 
     def add_packet(self):
         while self.cur_packets_count < self.max_packets_count or \
@@ -87,13 +87,13 @@ class PcapWriter:
             self.control_files_by_size()
             self.control_files_by_time(current_time)
             with open(self.cur_file_name, 'ab') as pcap_file:
-                if self._current_time is None:
-                    self._current_time = current_time
+                if self.current_time is None:
+                    self.current_time = current_time
                 if self.analyze_packet(packet):
                     self.cur_packets_count += 1
                     packet_header = struct.pack('=iiii',
                                                 int(current_time -
-                                                    self._current_time),
+                                                    self.current_time),
                                                 0,
                                                 len(packet),
                                                 len(packet))

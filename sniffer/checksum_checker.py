@@ -1,8 +1,18 @@
 import socket
 import struct
 
-from sniffer.network_packets import get_checksum, EthernetFrame, \
+from sniffer.network_packets import EthernetFrame, \
     TransmissionPacket, IpPack
+
+
+def get_checksum(msg: bytes) -> int:
+    checksum = 0
+    for i in range(0, len(msg), 2):
+        part = (msg[i] << 8) + (msg[i + 1])
+        checksum += part
+    checksum = (checksum >> 16) + (checksum & 0xffff)
+
+    return checksum ^ 0xffff
 
 
 class ChecksumChecker:

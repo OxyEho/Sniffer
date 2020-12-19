@@ -1,9 +1,9 @@
-import time
 import socket
+import time
 
 from queue import Queue
 from threading import Thread
-from typing import Set, List, Optional
+from typing import Optional, Set, List
 
 from sniffer.network_packets import IP, MAC, IPNetwork
 from sniffer.pcap_writer import PcapWriter
@@ -43,15 +43,20 @@ class Sniffer:
 
     @staticmethod
     def _get_recv_socket():
-        return socket.socket(socket.AF_PACKET, socket.SOCK_RAW,
-                             socket.ntohs(3))
+        recv_sock = socket.socket(socket.AF_PACKET, socket.SOCK_RAW,
+                                  socket.ntohs(3))
+        # recv_sock.settimeout(5)
+        return recv_sock
 
     def _catch_packet(self):
         while self.pcap_writer.cur_packets_count < self.max_packets_count \
                 or self.pcap_writer.work_always:
             recv_socket = self._get_recv_socket()
             self._sockets.append(recv_socket)
-            caught_packet = recv_socket.recv(65535), time.perf_counter()
+            try:
+                caught_packet = recv_socket.recv(65535), time.perf_counter()
+            except socket.timeout:
+                continue
             self.pcap_writer.packets_queue.put(caught_packet)
 
     def run(self):

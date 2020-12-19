@@ -2,7 +2,17 @@ import socket
 import struct
 
 from sniffer.network_packets import EthernetFrame, IpPack, \
-    IcmpPack, TcpPack, UdpPack, IP, MAC
+    TcpPack, UdpPack, IP, MAC
+
+
+def test_ip():
+    ip = IP('0.0.0.0')
+    assert str(ip) == '0.0.0.0'
+
+
+def test_mac():
+    mac = MAC('00:00:00:00:00:00')
+    assert str(mac) == '00:00:00:00:00:00'
 
 
 def test_get_ethernet_frame():
@@ -11,10 +21,12 @@ def test_get_ethernet_frame():
     protocol = 2048
     data = struct.pack('!6s6sH', destination_mac, source_mac, protocol)
     ethernet_frame = EthernetFrame.parse(data)
-    assert str(ethernet_frame.destination_mac) == \
-           EthernetFrame.get_mac_address(destination_mac)
-    assert str(ethernet_frame.source_mac) == \
-           EthernetFrame.get_mac_address(source_mac)
+    res_dest_mac = str(ethernet_frame.destination_mac)
+    expected_dest_mac = EthernetFrame.get_mac_address(destination_mac)
+    res_source_mac = str(ethernet_frame.source_mac)
+    expected_source_mac = EthernetFrame.get_mac_address(source_mac)
+    assert expected_dest_mac == res_dest_mac
+    assert expected_source_mac == res_source_mac
     assert ethernet_frame.protocol == socket.htons(protocol)
 
 
@@ -42,8 +54,16 @@ def test_get_tcp_packet():
     seq = 1
     acknowledgement = 1
     flags = 2
-    data = struct.pack('!HHLLxB', source_port, destination_port,
-                       seq, acknowledgement, flags)
+    data = struct.pack('!HHLLBBHHH',
+                       source_port,
+                       destination_port,
+                       seq,
+                       acknowledgement,
+                       128,
+                       flags,
+                       1000,
+                       0,
+                       0)
     tcp_packet = TcpPack.parse(data)
     assert tcp_packet.source_port == source_port
     assert tcp_packet.destination_port == destination_port
@@ -55,23 +75,20 @@ def test_get_tcp_packet():
     assert tcp_packet.ack == 0
     assert tcp_packet.urg == 0
     assert tcp_packet.rst == 0
-
-
-def test_get_icmp_packet():
-    icmp_type = 3
-    icmp_code = 3
-    data = struct.pack('!BB', icmp_type, icmp_code)
-    icmp_packet = IcmpPack.parse(data)
-    assert icmp_packet.icmp_code == icmp_code
-    assert icmp_packet.icmp_type == icmp_type
+    assert tcp_packet.window == 1000
+    assert tcp_packet.reserved == 128
+    assert tcp_packet.urg_ptr == 0
+    assert tcp_packet.checksum == 0
 
 
 def test_get_udp_packet():
     source_port = 80
     destination_port = 80
+    checksum = 0
     size = 100
-    data = struct.pack('!HH2xH', source_port, destination_port, size)
+    data = struct.pack('!HHHH', source_port, destination_port, size, checksum)
     udp_packet = UdpPack.parse(data)
     assert udp_packet.source_port == source_port
     assert udp_packet.destination_port == destination_port
+    assert udp_packet.checksum == checksum
     assert udp_packet.packet_len == size

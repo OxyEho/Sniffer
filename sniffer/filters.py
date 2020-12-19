@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from typing import List, Set
+from typing import List, Set, Optional
 
 from sniffer.network_packets import IP, MAC, IPNetwork, EthernetFrame, IpPack
 from sniffer.protocols import EthProtocols, IPProtocols
@@ -9,17 +9,17 @@ from sniffer.protocols import EthProtocols, IPProtocols
 @dataclass
 class AddressFilter:
     ips: List[IP] = List[IP]
-    macs: List[MAC] = List[IP]
-    ip_network: IPNetwork = IPNetwork('0.0.0.0/0')
+    macs: List[MAC] = List[MAC]
+    ip_network: Optional[IPNetwork] = IPNetwork('0.0.0.0/0')
 
     def filter_by_address(self, ethernet_frame: EthernetFrame) -> bool:
         ip_packet = ethernet_frame.child
-        res_macs = self._filter_by_mac(ethernet_frame)
-        res_ips = self._filter_by_ips(ip_packet)
-        res_net = self._filter_by_net(ip_packet)
+        res_macs = self.filter_by_macs(ethernet_frame)
+        res_ips = self.filter_by_ips(ip_packet)
+        res_net = self.filter_by_net(ip_packet)
         return res_macs and res_ips and res_net
 
-    def _filter_by_ips(self, ip_packet: IpPack) -> bool:
+    def filter_by_ips(self, ip_packet: IpPack) -> bool:
         if not self.ips:
             return True
         if self.ips and ip_packet:
@@ -27,7 +27,7 @@ class AddressFilter:
                    ip_packet.destination_ip in self.ips
         return False
 
-    def _filter_by_net(self, ip_packet: IpPack) -> bool:
+    def filter_by_net(self, ip_packet: IpPack) -> bool:
         if not self.ip_network:
             return True
         if self.ip_network and ip_packet:
@@ -35,7 +35,7 @@ class AddressFilter:
                    or ip_packet.destination_ip in self.ip_network
         return False
 
-    def _filter_by_mac(self, ethernet_frame: EthernetFrame) -> bool:
+    def filter_by_macs(self, ethernet_frame: EthernetFrame) -> bool:
         if not self.macs:
             return True
         if self.macs:
