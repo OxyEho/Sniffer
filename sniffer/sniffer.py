@@ -133,7 +133,6 @@ class PcapWriter:
 
     def control_files(self):
         if self.file_size:
-            print(os.path.getsize(self.cur_file_name))
             if os.path.getsize(self.cur_file_name) >= self.file_size:
                 self.cur_file_name = f'{self.file_name}' \
                                      f'{next(self._gen_file_num)}'
@@ -167,7 +166,7 @@ class PcapWriter:
         res_by_address = self.address_filter.filter_by_address(ethernet_frame)
         is_correct_packet = res_by_proto and res_by_address
         if is_correct_packet:
-            # ethernet_frame.show_packet()
+            ethernet_frame.show_packet()
             return True
         return False
 
