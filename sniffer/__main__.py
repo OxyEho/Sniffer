@@ -17,7 +17,6 @@ if __name__ == '__main__':
     arg_parser.add_argument('--ip', action='store_true')
     arg_parser.add_argument('--tcp', action='store_true')
     arg_parser.add_argument('--udp', action='store_true')
-    arg_parser.add_argument('--icmp', action='store_true')
     arg_parser.add_argument('--other', action='store_true')
     args = arg_parser.parse_args()
     ips = [IP(x) for x in args.ips]
@@ -27,22 +26,21 @@ if __name__ == '__main__':
     else:
         ip_net = None
     available_eth_protocols = set()
-    if args.ip:
+    if args.ip or args.tcp or args.udp:
         available_eth_protocols.add(EthProtocols.IP)
     if available_eth_protocols == set():
         available_eth_protocols = {EthProtocols.IP, EthProtocols.OTHER}
     available_ip_protocols = set()
     if args.tcp:
         available_ip_protocols.add(IPProtocols.TCP)
-    if args.icmp:
-        available_ip_protocols.add(IPProtocols.ICMP)
     if args.udp:
         available_ip_protocols.add(IPProtocols.UDP)
     if args.other:
         available_ip_protocols.add(IPProtocols.OTHER)
     if available_ip_protocols == set():
-        available_ip_protocols = {IPProtocols.TCP, IPProtocols.ICMP,
-                                  IPProtocols.UDP, IPProtocols.OTHER}
+        available_ip_protocols = {IPProtocols.TCP,
+                                  IPProtocols.UDP,
+                                  IPProtocols.OTHER}
     sniffer = Sniffer(args.a,
                       args.f,
                       args.file_size,
@@ -53,4 +51,10 @@ if __name__ == '__main__':
                       macs,
                       ip_net,
                       args.timer)
-    sniffer.run()
+    try:
+        sniffer.run()
+    except KeyboardInterrupt:
+        for thread in sniffer.threads:
+            thread.join()
+    finally:
+        sniffer.close()

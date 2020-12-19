@@ -5,6 +5,7 @@ import time
 from queue import Queue, Empty
 from typing import Optional, Set, List
 
+from sniffer.checksum_checker import ChecksumChecker
 from sniffer.filters import ProtoFilter, AddressFilter
 from sniffer.network_packets import IP, MAC, IPNetwork, EthernetFrame
 from sniffer.protocols import EthProtocols, IPProtocols
@@ -102,7 +103,12 @@ class PcapWriter:
         ethernet_frame = EthernetFrame.unpack(packet)
         res_by_proto = self.proto_filter.filter_by_proto(ethernet_frame)
         res_by_address = self.address_filter.filter_by_address(ethernet_frame)
-        is_correct_packet = res_by_proto and res_by_address
+        sum_checker = ChecksumChecker(ethernet_frame)
+        res_transmission_checksum = sum_checker.check_transmission_checksum()
+        res_ip_checksum = sum_checker.check_ip_checksum()
+        res_checksum = res_ip_checksum and res_transmission_checksum
+        res_filter = res_by_address and res_by_proto
+        is_correct_packet = res_checksum and res_filter
         if is_correct_packet:
             ethernet_frame.show_packet()
             return True

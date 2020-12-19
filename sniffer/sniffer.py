@@ -39,6 +39,7 @@ class Sniffer:
         self.recv_socket.settimeout(3)
         self.packets_queue = Queue()
         self._sockets: List[socket.socket] = []
+        self.threads: List[Thread] = []
 
     @staticmethod
     def _get_recv_socket():
@@ -54,20 +55,12 @@ class Sniffer:
             self.pcap_writer.packets_queue.put(caught_packet)
 
     def run(self):
-        threads = []
-        try:
-            catching_thread = Thread(target=self._catch_packet)
-            catching_thread.start()
-            add_thread = Thread(target=self.pcap_writer.add_packet)
-            add_thread.start()
-            threads.append(catching_thread)
-            threads.append(add_thread)
-        except KeyboardInterrupt:
-            for thread in threads:
-                thread.join()
-
-        finally:
-            self.close()
+        catching_thread = Thread(target=self._catch_packet)
+        catching_thread.start()
+        add_thread = Thread(target=self.pcap_writer.add_packet)
+        add_thread.start()
+        self.threads.append(catching_thread)
+        self.threads.append(add_thread)
 
     def close(self):
         for sock in self._sockets:

@@ -10,6 +10,16 @@ TAB_THREE = '\t\t\t'
 TAB_FOUR = '\t\t\t\t'
 
 
+def get_checksum(msg: bytes) -> int:
+    checksum = 0
+    for i in range(0, len(msg), 2):
+        part = (msg[i] << 8) + (msg[i + 1])
+        checksum += part
+    checksum = (checksum >> 16) + (checksum & 0xffff)
+
+    return checksum ^ 0xffff
+
+
 class IP:
     def __init__(self, ip: str):
         self.parts = ip.split('.')
@@ -38,7 +48,7 @@ class IPNetwork:
         network, mask = network_adr.split('/')
         self.network = IP(network)
         mask = '1' * int(mask) + '0' * (32 - int(mask))
-        self.mask = [int(mask[i:i+8], 2) for i in range(0, 32, 8)]
+        self.mask = [int(mask[i:i + 8], 2) for i in range(0, 32, 8)]
 
     def __contains__(self, item: IP):
         result_network_adr = []
@@ -46,6 +56,7 @@ class IPNetwork:
             result_network_adr.append(str(mask_part & ip_part))
         result_network = IP('.'.join(result_network_adr))
         return result_network == self.network
+
 
 @dataclass
 class Packet:
@@ -83,41 +94,57 @@ class Packet:
         return packet
 
 
-class IcmpPack(Packet):
-    def __init__(self, icmp_type, icmp_code, data):
-        self.icmp_type = icmp_type
-        self.icmp_code = icmp_code
-        self.data = data
+@dataclass
+class TransmissionPacket(Packet):
+    proto: int
+    source_ip: bytes
+    destination_ip: bytes
+    checksum: int
 
-    @classmethod
-    def parse(cls, data: bytes):
-        icmp_type, icmp_code = struct.unpack('!BB', data[:2])
-        return cls(icmp_type, icmp_code, data[2:])
-
-    def __str__(self):
-        return f'{TAB_TWO}ICMP packet:\n' \
-               f'{TAB_THREE}CODE: {self.icmp_code}\n' \
-               f'{TAB_THREE}TYPE: {self.icmp_type}\n'
+    @abc.abstractmethod
+    def get_bytes_header(self) -> bytes:
+        pass
 
 
-class TcpPack(Packet):
+class TcpPack(TransmissionPacket):
+    proto = 6
+
     def __init__(self, source_port: int, destination_port: int,
-                 seq: int, acknowledgement: int, flags, data: bytes):
+                 seq: int, acknowledgement: int, reserved: int, flags,
+                 window: int, checksum: int, urg_ptr: int,
+                 data: bytes):
         self.source_port: int = source_port
         self.destination_port: int = destination_port
         self.seq: int = seq
         self.acknowledgement = acknowledgement
+        self.flags = flags
         self.urg = (flags & 32) >> 5
         self.ack = (flags & 16) >> 4
         self.psh = (flags & 8) >> 3
         self.rst = (flags & 4) >> 2
         self.syn = (flags & 2) >> 1
         self.fin = (flags & 1)
+        self.reserved = reserved
+        self.window = window
+        self.checksum = checksum
+        self.urg_ptr = urg_ptr
         self.data = data
+
+    def get_bytes_header(self) -> bytes:
+        return struct.pack('!HHLLBBHHH',
+                           self.source_port,
+                           self.destination_port,
+                           self.seq,
+                           self.acknowledgement,
+                           self.reserved,
+                           self.flags,
+                           self.window,
+                           self.checksum,
+                           self.urg_ptr)
 
     @classmethod
     def parse(cls, data: bytes):
-        return cls(*struct.unpack('!HHLLxB', data[:14]), data[20:])
+        return cls(*struct.unpack('!HHLLBBHHH', data[:20]), data[20:])
 
     def __str__(self):
         return f'{TAB_TWO}TCP packet:\n' \
@@ -125,54 +152,72 @@ class TcpPack(Packet):
                f'{TAB_THREE}Destination port: {self.destination_port}\n' \
                f'{TAB_THREE}Sequence: {self.seq}\n' \
                f'{TAB_THREE}Acknowledgement: {self.acknowledgement}\n' \
+               f'{TAB_THREE}Reserved: {self.reserved}\n' \
                f'{TAB_THREE}Flags: URG: {self.urg} ACK: {self.ack}\n' \
                f'{TAB_THREE}       PSH: {self.psh} RST: {self.rst}\n' \
-               f'{TAB_THREE}       SYN: {self.syn} FIN: {self.fin}\n'
+               f'{TAB_THREE}       SYN: {self.syn} FIN: {self.fin}\n' \
+               f'{TAB_THREE}Window: {self.window}\n' \
+               f'{TAB_THREE}Checksum: {self.checksum}\n' \
+               f'{TAB_THREE}Urgent pointer: {self.urg_ptr}\n'
 
 
-class UdpPack(Packet):
+class UdpPack(TransmissionPacket):
+    proto = 17
+
     def __init__(self, source_port: int, destination_port: int,
-                 packet_len: int, data: bytes):
+                 packet_len: int, checksum: int, data: bytes):
         self.source_port = source_port
         self.destination_port = destination_port
         self.packet_len = packet_len
+        self.checksum = checksum
         self.data = data
+
+    def get_bytes_header(self) -> bytes:
+        return struct.pack('!HHHH',
+                           self.source_port,
+                           self.destination_port,
+                           self.packet_len,
+                           self.checksum)
 
     @classmethod
     def parse(cls, data: bytes):
-        source_port, destination_port, size = struct.unpack('!HH2xH', data[:8])
-        return cls(source_port, destination_port, size, data[8:])
+        return cls(*struct.unpack('!HHHH', data[:8]), data[8:])
 
     def __str__(self):
         return f'{TAB_TWO}UDP packet:\n' \
                f'{TAB_THREE}Source port: {self.source_port}\n' \
                f'{TAB_THREE}Destination port: {self.destination_port}\n' \
+               f'{TAB_THREE}Checksum: {self.checksum}\n' \
                f'{TAB_THREE}Size: {self.packet_len}\n'
 
 
 class IpPack(Packet):
-    internal_protocols = {1: IcmpPack, 6: TcpPack, 17: UdpPack}
-    
+    internal_protocols = {6: TcpPack, 17: UdpPack}
+
     def __init__(self, version: int, header_len: int, ttl: int, protocol: int,
-                 source_ip: IP, destination_ip: IP, data: bytes):
+                 source_ip: IP, destination_ip: IP,
+                 origin_pack: bytes, data: bytes):
         self.version = version
         self.header_len = header_len
         self.ttl = ttl
         self.protocol = protocol
         self.source_ip = source_ip
         self.destination_ip = destination_ip
+        self.origin_pack = origin_pack
         self.data = data
 
     @classmethod
     def parse(cls, data: bytes):
         version = data[0] >> 4
         header_len = (data[0] & 15) * 4
-        ttl, protocol, source_ip, destination_ip = struct.unpack('!8xBB2x4s4s',
-                                                                 data[:20])
+        ttl, protocol, check_sum, source_ip, destination_ip = struct.unpack(
+            '!8xBBH4s4s',
+            data[:20])
         return cls(version=version, header_len=header_len, ttl=ttl,
                    protocol=protocol,
                    source_ip=IP(cls.ip(source_ip)),
                    destination_ip=IP(cls.ip(destination_ip)),
+                   origin_pack=data,
                    data=data[20:])
 
     @staticmethod
