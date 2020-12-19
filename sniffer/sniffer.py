@@ -95,26 +95,30 @@ class PcapWriter:
     max_packet_len: int = 65535
     network: int = 1
 
-    def __init__(self, work_always: bool, file_name: str,
+    def __init__(self,
+                 work_always: bool,
+                 file_name: str,
                  file_size: Optional[int],
                  available_eth_protocols: Set[EthProtocols],
                  available_ip_protocols: Set[IPProtocols],
                  ips: List[IP],
                  macs: List[MAC],
                  ip_network: IPNetwork,
-                 max_packets_count: int):
+                 max_packets_count: int,
+                 timer: Optional[int]):
         self.file_name = file_name
         self.cur_file_name = file_name
-        self._current_time = None
+        self._current_time: Optional[float] = None
         self.proto_filter = ProtoFilter(available_eth_protocols,
                                         available_ip_protocols)
         self.address_filter = AddressFilter(ips, macs, ip_network)
         self.packets_queue = Queue()
-        self.cur_packets_count = 0
+        self.cur_packets_count: int = 0
         self.max_packets_count = max_packets_count
         self.work_always = work_always
         self.file_size = file_size
         self._gen_file_num = self._get_file_number()
+        self.timer = timer
         with open(self.cur_file_name, 'wb') as pcap_file:
             pcap_file.write(self.get_pcap_header())
 
@@ -125,19 +129,29 @@ class PcapWriter:
                            self.network)
 
     @staticmethod
-    def _get_file_number():
+    def _get_file_number() -> List[int]:
         num = 1
         while True:
             yield num
             num += 1
 
-    def control_files(self):
+    def control_files_by_size(self):
         if self.file_size:
             if os.path.getsize(self.cur_file_name) >= self.file_size:
                 self.cur_file_name = f'{self.file_name}' \
                                      f'{next(self._gen_file_num)}'
                 with open(self.cur_file_name, 'wb') as pcap_file:
                     pcap_file.write(self.get_pcap_header())
+                self._current_time = None
+
+    def control_files_by_time(self, current_time: float):
+        if self.timer and self._current_time:
+            if current_time - self._current_time >= self.timer:
+                self.cur_file_name = f'{self.file_name}' \
+                                     f'{next(self._gen_file_num)}'
+                with open(self.cur_file_name, 'wb') as pcap_file:
+                    pcap_file.write(self.get_pcap_header())
+                self._current_time = None
 
     def add_packet(self):
         while self.cur_packets_count < self.max_packets_count or \
@@ -146,7 +160,8 @@ class PcapWriter:
                 packet, current_time = self.packets_queue.get()
             except Empty:
                 continue
-            self.control_files()
+            self.control_files_by_size()
+            self.control_files_by_time(current_time)
             with open(self.cur_file_name, 'ab') as pcap_file:
                 if self._current_time is None:
                     self._current_time = current_time
@@ -172,20 +187,29 @@ class PcapWriter:
 
 
 class Sniffer:
-    def __init__(self, work_always: bool, file_name: str,
+    def __init__(self,
+                 work_always: bool,
+                 file_name: str,
                  file_size: Optional[int],
                  max_packets_count: int,
                  available_eth_protocols: Set[EthProtocols],
                  available_ip_protocols: Set[IPProtocols],
                  ips: List[IP],
                  macs: List[MAC],
-                 ip_network: Optional[IPNetwork]):
+                 ip_network: Optional[IPNetwork],
+                 timer: Optional[int]):
         self.max_packets_count = max_packets_count
         self._time_delta = None
-        self.pcap_writer = PcapWriter(work_always, file_name, file_size,
+        self.pcap_writer = PcapWriter(work_always,
+                                      file_name,
+                                      file_size,
                                       available_eth_protocols,
-                                      available_ip_protocols, ips, macs,
-                                      ip_network, max_packets_count)
+                                      available_ip_protocols,
+                                      ips,
+                                      macs,
+                                      ip_network,
+                                      max_packets_count,
+                                      timer)
         self.recv_socket = socket.socket(socket.AF_PACKET, socket.SOCK_RAW,
                                          socket.ntohs(3))
         self.recv_socket.settimeout(3)
