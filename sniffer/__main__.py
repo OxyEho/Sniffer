@@ -1,8 +1,8 @@
 import argparse
 
-from sniffer.sniffer import Sniffer, IPProtocols, EthProtocols, \
-    IP, MAC, IPNetwork
-
+from sniffer.network_packets import IP, MAC, IPNetwork
+from sniffer.protocols import EthProtocols, IPProtocols
+from sniffer.sniffer import Sniffer
 
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser()
