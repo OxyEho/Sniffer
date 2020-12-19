@@ -45,7 +45,6 @@ class Sniffer:
     def _get_recv_socket():
         recv_sock = socket.socket(socket.AF_PACKET, socket.SOCK_RAW,
                                   socket.ntohs(3))
-        # recv_sock.settimeout(5)
         return recv_sock
 
     def _catch_packet(self):
