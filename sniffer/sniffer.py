@@ -2,10 +2,11 @@ import time
 import socket
 import struct
 import enum
+import os
 
 from queue import Queue, Empty
 from threading import Thread
-from typing import Tuple, Set, List
+from typing import Tuple, Set, List, Optional
 from dataclasses import dataclass
 
 from sniffer.network_packets import EthernetFrame, IpPack, IcmpPack, \
@@ -95,6 +96,7 @@ class PcapWriter:
     network: int = 1
 
     def __init__(self, work_always: bool, file_name: str,
+                 file_size: Optional[int],
                  available_eth_protocols: Set[EthProtocols],
                  available_ip_protocols: Set[IPProtocols],
                  ips: List[IP],
@@ -102,6 +104,7 @@ class PcapWriter:
                  ip_network: IPNetwork,
                  max_packets_count: int):
         self.file_name = file_name
+        self.cur_file_name = file_name
         self._current_time = None
         self.proto_filter = ProtoFilter(available_eth_protocols,
                                         available_ip_protocols)
@@ -110,7 +113,9 @@ class PcapWriter:
         self.cur_packets_count = 0
         self.max_packets_count = max_packets_count
         self.work_always = work_always
-        with open(self.file_name, 'wb') as pcap_file:
+        self.file_size = file_size
+        self._gen_file_num = self._get_file_number()
+        with open(self.cur_file_name, 'wb') as pcap_file:
             pcap_file.write(self.get_pcap_header())
 
     def get_pcap_header(self) -> bytes:
@@ -119,6 +124,22 @@ class PcapWriter:
                            self.time_zone, 0, self.max_packet_len,
                            self.network)
 
+    @staticmethod
+    def _get_file_number():
+        num = 1
+        while True:
+            yield num
+            num += 1
+
+    def control_files(self):
+        if self.file_size:
+            print(os.path.getsize(self.cur_file_name))
+            if os.path.getsize(self.cur_file_name) >= self.file_size:
+                self.cur_file_name = f'{self.file_name}' \
+                                     f'{next(self._gen_file_num)}'
+                with open(self.cur_file_name, 'wb') as pcap_file:
+                    pcap_file.write(self.get_pcap_header())
+
     def add_packet(self):
         while self.cur_packets_count < self.max_packets_count or \
                 self.work_always:
@@ -126,7 +147,8 @@ class PcapWriter:
                 packet, current_time = self.packets_queue.get()
             except Empty:
                 continue
-            with open(self.file_name, 'ab') as pcap_file:
+            self.control_files()
+            with open(self.cur_file_name, 'ab') as pcap_file:
                 if self._current_time is None:
                     self._current_time = current_time
                 if self.analyze_packet(packet):
@@ -145,22 +167,23 @@ class PcapWriter:
         res_by_address = self.address_filter.filter_by_address(ethernet_frame)
         is_correct_packet = res_by_proto and res_by_address
         if is_correct_packet:
-            ethernet_frame.show_packet()
+            # ethernet_frame.show_packet()
             return True
         return False
 
 
 class Sniffer:
     def __init__(self, work_always: bool, file_name: str,
+                 file_size: Optional[int],
                  max_packets_count: int,
                  available_eth_protocols: Set[EthProtocols],
                  available_ip_protocols: Set[IPProtocols],
                  ips: List[IP],
                  macs: List[MAC],
-                 ip_network: IPNetwork):
+                 ip_network: Optional[IPNetwork]):
         self.max_packets_count = max_packets_count
         self._time_delta = None
-        self.pcap_writer = PcapWriter(work_always, file_name,
+        self.pcap_writer = PcapWriter(work_always, file_name, file_size,
                                       available_eth_protocols,
                                       available_ip_protocols, ips, macs,
                                       ip_network, max_packets_count)
