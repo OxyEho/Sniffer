@@ -177,7 +177,7 @@ def test_filter_by_proto_with_eth_true(eth_frame):
 
 
 def test_filter_by_proto_with_eth_false(eth_frame):
-    proto_filter = ProtoFilter({EthProtocols.IP,},
+    proto_filter = ProtoFilter({EthProtocols.IP},
                                {IPProtocols.TCP,
                                 IPProtocols.UDP,
                                 IPProtocols.OTHER}

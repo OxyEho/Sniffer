@@ -6,7 +6,7 @@ import os
 from unittest.mock import patch
 
 from sniffer.pcap_writer import PcapWriter
-from sniffer.sniffer import Sniffer, EthProtocols, IPProtocols
+from sniffer.sniffer import EthProtocols, IPProtocols
 
 
 class FakeSocket:
@@ -105,7 +105,7 @@ def test_analyze_incorrect_ip_packet(pcap_writer):
 @patch('builtins.open')
 @patch.object(os.path, 'getsize', return_value=2)
 def test_control_files_by_size_with_new_files(mock_open, mock_getsize,
-                                             pcap_writer):
+                                              pcap_writer):
     for i in range(1, 5):
         pcap_writer.file_size = 1
         pcap_writer.control_files_by_size()
