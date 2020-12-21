@@ -3,8 +3,10 @@ import struct
 
 import pytest
 
+from sniffer.EthernetFrame import EthernetFrame
+from sniffer.IPPacket import IP, IpPack
+from sniffer.TCPPacket import TcpPack
 from sniffer.checksum_checker import ChecksumChecker
-from sniffer.network_packets import EthernetFrame, IpPack, IP, TcpPack
 
 
 def _get_fake_eth_bytes(dest_mac: bytes, source_mac: bytes,

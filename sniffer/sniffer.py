@@ -5,7 +5,8 @@ from queue import Queue
 from threading import Thread
 from typing import Optional, Set, List
 
-from sniffer.network_packets import IP, MAC, IPNetwork
+from sniffer.EthernetFrame import MAC
+from sniffer.IPPacket import IP, IPNetwork
 from sniffer.pcap_writer import PcapWriter
 from sniffer.protocols import EthProtocols, IPProtocols
 

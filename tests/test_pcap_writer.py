@@ -6,7 +6,7 @@ import os
 from unittest.mock import patch
 
 from sniffer.pcap_writer import PcapWriter
-from sniffer.sniffer import EthProtocols
+from sniffer.protocols import EthProtocols
 
 
 class FakeSocket:

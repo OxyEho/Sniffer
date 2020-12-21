@@ -1,6 +1,7 @@
 import argparse
 
-from sniffer.network_packets import IP, MAC, IPNetwork
+from sniffer.EthernetFrame import MAC
+from sniffer.IPPacket import IP, IPNetwork
 from sniffer.protocols import EthProtocols, IPProtocols
 from sniffer.sniffer import Sniffer
 

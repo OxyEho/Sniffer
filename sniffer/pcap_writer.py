@@ -5,8 +5,9 @@ import time
 from queue import Queue, Empty
 from typing import Optional, Set, List
 
+from sniffer.EthernetFrame import MAC, EthernetFrame
+from sniffer.IPPacket import IP, IPNetwork
 from sniffer.checksum_checker import ChecksumChecker
-from sniffer.network_packets import IP, MAC, IPNetwork, EthernetFrame
 from sniffer.protocols import EthProtocols, IPProtocols
 from sniffer.MACsFilter import MACsFilter
 from sniffer.IPsFilter import IPsFilter

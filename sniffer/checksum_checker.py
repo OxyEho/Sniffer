@@ -1,8 +1,9 @@
 import socket
 import struct
 
-from sniffer.network_packets import EthernetFrame, \
-    TransmissionPacket, IpPack
+from sniffer.EthernetFrame import EthernetFrame
+from sniffer.IPPacket import IpPack
+from sniffer.TransmissionPacket import TransmissionPacket
 
 
 def get_checksum(msg: bytes) -> int:

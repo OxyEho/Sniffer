@@ -2,7 +2,8 @@ from dataclasses import dataclass
 
 from typing import List
 
-from sniffer.network_packets import IP, EthernetFrame
+from sniffer.EthernetFrame import EthernetFrame
+from sniffer.IPPacket import IP
 
 
 @dataclass

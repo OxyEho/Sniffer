@@ -1,6 +1,7 @@
 import pytest
 
-from sniffer.network_packets import EthernetFrame, MAC, IP, IpPack, IPNetwork
+from sniffer.EthernetFrame import EthernetFrame, MAC
+from sniffer.IPPacket import IpPack, IP, IPNetwork
 from sniffer.protocols import EthProtocols, IPProtocols
 from sniffer.EthernetProtoFilter import EthProtoFilter
 from sniffer.IPProtoFilter import IPProtoFilter

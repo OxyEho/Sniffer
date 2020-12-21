@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from typing import List
 
-from sniffer.network_packets import MAC, EthernetFrame
+from sniffer.EthernetFrame import MAC, EthernetFrame
 
 
 @dataclass

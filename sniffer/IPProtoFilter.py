@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from typing import Optional
 
-from sniffer.network_packets import EthernetFrame
+from sniffer.EthernetFrame import EthernetFrame
 from sniffer.protocols import IPProtocols
 
 
