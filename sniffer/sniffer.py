@@ -20,7 +20,7 @@ class Sniffer:
                  available_ip_protocols: Set[IPProtocols],
                  ips: List[IP],
                  macs: List[MAC],
-                 ip_network: Optional[IPNetwork],
+                 ip_network: List[IPNetwork],
                  timer: Optional[int]):
         self.max_packets_count = max_packets_count
         self._time_delta = None
@@ -40,32 +40,32 @@ class Sniffer:
         self.packets_queue = Queue()
         self._sockets: List[socket.socket] = []
         self.threads: List[Thread] = []
-
-    @staticmethod
-    def _get_recv_socket():
-        recv_sock = socket.socket(socket.AF_PACKET, socket.SOCK_RAW,
-                                  socket.ntohs(3))
-        return recv_sock
+        self.recv_socket = socket.socket(socket.AF_PACKET, socket.SOCK_RAW,
+                                         socket.ntohs(3))
 
     def _catch_packet(self):
-        while self.pcap_writer.cur_packets_count < self.max_packets_count \
-                or self.pcap_writer.work_always:
-            recv_socket = self._get_recv_socket()
-            self._sockets.append(recv_socket)
+        continue_work = True
+        while continue_work:
+            cur_packets_count = self.pcap_writer.cur_packets_count
+            finish = self.pcap_writer.finish_ctrl_c
+            less_packets = cur_packets_count < self.max_packets_count
+            continue_work = less_packets or self.pcap_writer.work_always
+            continue_work = continue_work and not finish
             try:
-                caught_packet = recv_socket.recv(65535), time.perf_counter()
+                caught_packet = self.recv_socket.recv(65535), \
+                                time.perf_counter()
             except socket.timeout:
                 continue
             self.pcap_writer.packets_queue.put(caught_packet)
 
     def run(self):
-        catching_thread = Thread(target=self._catch_packet)
-        catching_thread.start()
         add_thread = Thread(target=self.pcap_writer.add_packet)
         add_thread.start()
-        self.threads.append(catching_thread)
         self.threads.append(add_thread)
+        try:
+            self._catch_packet()
+        except KeyboardInterrupt:
+            self.pcap_writer.finish_ctrl_c = True
 
     def close(self):
-        for sock in self._sockets:
-            sock.close()
+        self.recv_socket.close()

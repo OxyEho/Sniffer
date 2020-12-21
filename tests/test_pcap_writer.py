@@ -6,7 +6,7 @@ import os
 from unittest.mock import patch
 
 from sniffer.pcap_writer import PcapWriter
-from sniffer.sniffer import EthProtocols, IPProtocols
+from sniffer.sniffer import EthProtocols
 
 
 class FakeSocket:
@@ -39,12 +39,10 @@ def pcap_writer(mock_socket):
                       max_packets_count=10,
                       available_eth_protocols={EthProtocols.IP,
                                                EthProtocols.OTHER},
-                      available_ip_protocols={IPProtocols.TCP,
-                                              IPProtocols.UDP,
-                                              IPProtocols.OTHER},
+                      available_ip_protocols=set(),
                       ips=[],
                       macs=[],
-                      ip_network=None,
+                      ip_networks=[],
                       timer=None)
 
 
