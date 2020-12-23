@@ -5,15 +5,15 @@ import time
 from queue import Queue, Empty
 from typing import Optional, Set, List
 
-from sniffer.EthernetFrame import MAC, EthernetFrame
-from sniffer.IPPacket import IP, IPNetwork
+from sniffer.packets.ethernet_frame import MAC, EthernetFrame
+from sniffer.packets.ip_packet import IP, IPNetwork
 from sniffer.checksum_checker import ChecksumChecker
-from sniffer.protocols import EthProtocols, IPProtocols
-from sniffer.MACsFilter import MACsFilter
-from sniffer.IPsFilter import IPsFilter
-from sniffer.NetFilter import NetFilter
-from sniffer.EthernetProtoFilter import EthProtoFilter
-from sniffer.IPProtoFilter import IPProtoFilter
+from sniffer.packets.protocols import EthProtocols, IPProtocols
+from sniffer.filters.macs_filter import MACsFilter
+from sniffer.filters.ips_filter import IPsFilter
+from sniffer.filters.net_filter import NetFilter
+from sniffer.filters.ethernet_proto_filter import EthProtoFilter
+from sniffer.filters.ip_proto_filter import IPProtoFilter
 
 
 class PcapWriter:

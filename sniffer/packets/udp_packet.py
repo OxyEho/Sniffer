@@ -1,7 +1,7 @@
 import struct
 
-from sniffer.BasePacket import TAB_TWO, TAB_THREE
-from sniffer.TransmissionPacket import TransmissionPacket
+from sniffer.packets.base_packet import TAB_TWO, TAB_THREE
+from sniffer.packets.transmission_packet import TransmissionPacket
 
 
 class UdpPack(TransmissionPacket):

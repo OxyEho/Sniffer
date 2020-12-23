@@ -1,8 +1,8 @@
 import socket
 import struct
 
-from sniffer.BasePacket import Packet, TAB_ONE
-from sniffer.IPPacket import IpPack
+from sniffer.packets.base_packet import Packet, TAB_ONE
+from sniffer.packets.ip_packet import IpPack
 
 
 class MAC:

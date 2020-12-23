@@ -2,8 +2,8 @@ from dataclasses import dataclass
 
 from typing import Optional
 
-from sniffer.EthernetFrame import EthernetFrame
-from sniffer.protocols import EthProtocols
+from sniffer.packets.ethernet_frame import EthernetFrame
+from sniffer.packets.protocols import EthProtocols
 
 
 @dataclass

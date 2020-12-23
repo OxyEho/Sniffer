@@ -1,8 +1,8 @@
 import struct
 
-from sniffer.BasePacket import Packet, TAB_ONE, TAB_TWO
-from sniffer.TCPPacket import TcpPack
-from sniffer.UDPPacket import UdpPack
+from sniffer.packets.base_packet import Packet, TAB_ONE, TAB_TWO
+from sniffer.packets.tcp_packet import TcpPack
+from sniffer.packets.udp_packet import UdpPack
 
 
 class IP:

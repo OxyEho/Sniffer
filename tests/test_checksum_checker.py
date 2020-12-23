@@ -3,9 +3,9 @@ import struct
 
 import pytest
 
-from sniffer.EthernetFrame import EthernetFrame
-from sniffer.IPPacket import IP, IpPack
-from sniffer.TCPPacket import TcpPack
+from sniffer.packets.ethernet_frame import EthernetFrame
+from sniffer.packets.ip_packet import IP, IpPack
+from sniffer.packets.tcp_packet import TcpPack
 from sniffer.checksum_checker import ChecksumChecker
 
 

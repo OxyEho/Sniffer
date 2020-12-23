@@ -1,10 +1,10 @@
 import socket
 import struct
 
-from sniffer.EthernetFrame import MAC, EthernetFrame
-from sniffer.IPPacket import IP, IpPack
-from sniffer.TCPPacket import TcpPack
-from sniffer.UDPPacket import UdpPack
+from sniffer.packets.ethernet_frame import MAC, EthernetFrame
+from sniffer.packets.ip_packet import IP, IpPack
+from sniffer.packets.tcp_packet import TcpPack
+from sniffer.packets.udp_packet import UdpPack
 
 
 def test_ip():

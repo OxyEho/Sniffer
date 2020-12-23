@@ -1,13 +1,13 @@
 import pytest
 
-from sniffer.EthernetFrame import EthernetFrame, MAC
-from sniffer.IPPacket import IpPack, IP, IPNetwork
-from sniffer.protocols import EthProtocols, IPProtocols
-from sniffer.EthernetProtoFilter import EthProtoFilter
-from sniffer.IPProtoFilter import IPProtoFilter
-from sniffer.MACsFilter import MACsFilter
-from sniffer.IPsFilter import IPsFilter
-from sniffer.NetFilter import NetFilter
+from sniffer.packets.ethernet_frame import EthernetFrame, MAC
+from sniffer.packets.ip_packet import IpPack, IP, IPNetwork
+from sniffer.packets.protocols import EthProtocols, IPProtocols
+from sniffer.filters.ethernet_proto_filter import EthProtoFilter
+from sniffer.filters.ip_proto_filter import IPProtoFilter
+from sniffer.filters.macs_filter import MACsFilter
+from sniffer.filters.ips_filter import IPsFilter
+from sniffer.filters.net_filter import NetFilter
 
 
 @pytest.fixture()

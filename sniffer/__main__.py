@@ -1,8 +1,8 @@
 import argparse
 
-from sniffer.EthernetFrame import MAC
-from sniffer.IPPacket import IP, IPNetwork
-from sniffer.protocols import EthProtocols, IPProtocols
+from sniffer.packets.ethernet_frame import MAC
+from sniffer.packets.ip_packet import IP, IPNetwork
+from sniffer.packets.protocols import EthProtocols, IPProtocols
 from sniffer.sniffer import Sniffer
 
 if __name__ == '__main__':

@@ -2,7 +2,7 @@ import abc
 
 from dataclasses import dataclass
 
-from sniffer.BasePacket import Packet
+from sniffer.packets.base_packet import Packet
 
 
 @dataclass
