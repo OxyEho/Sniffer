@@ -7,18 +7,29 @@ from sniffer.sniffer import Sniffer
 
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument('-n', type=int, default=10)
-    arg_parser.add_argument('-a', action='store_true')
-    arg_parser.add_argument('-f', type=str, default='result-pcap')
-    arg_parser.add_argument('--file-size', type=int, default=None)
-    arg_parser.add_argument('--timer', type=int, default=None)
-    arg_parser.add_argument('--ips', nargs='*', default=[])
-    arg_parser.add_argument('--macs', nargs='*', default=[])
-    arg_parser.add_argument('--net',  nargs='*', default=[])
-    arg_parser.add_argument('--ip', action='store_true')
-    arg_parser.add_argument('--tcp', action='store_true')
-    arg_parser.add_argument('--udp', action='store_true')
-    arg_parser.add_argument('--other', action='store_true')
+    arg_parser.add_argument('-n', type=int, default=10,
+                            help='Number of packets to catch')
+    arg_parser.add_argument('-a', action='store_true', help='work always')
+    arg_parser.add_argument('-f', type=str, default='result-pcap',
+                            help='file name')
+    arg_parser.add_argument('--file-size', type=int, default=None,
+                            help='max file size(bytes)')
+    arg_parser.add_argument('--timer', type=int, default=None,
+                            help='splitting files by time')
+    arg_parser.add_argument('--ips', nargs='*', default=[],
+                            help='ip addresses for catching')
+    arg_parser.add_argument('--macs', nargs='*', default=[],
+                            help='mac addresses for catching')
+    arg_parser.add_argument('--net',  nargs='*', default=[],
+                            help='net addresses for catching')
+    arg_parser.add_argument('--ip', action='store_true',
+                            help='catching only ip packets')
+    arg_parser.add_argument('--tcp', action='store_true',
+                            help='catching only tcp packets')
+    arg_parser.add_argument('--udp', action='store_true',
+                            help='catching only udp packets')
+    arg_parser.add_argument('--other', action='store_true',
+                            help='catching others protocols')
     args = arg_parser.parse_args()
     ips = [IP(x) for x in args.ips]
     macs = [MAC(x) for x in args.macs]
